@@ -1,0 +1,172 @@
+from datetime import date
+from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, create_engine
+from sqlalchemy.orm import DeclarativeBase, relationship, Session
+
+
+class Base(DeclarativeBase):
+    pass
+
+class Jugador(Base):
+    __tablename__ = "Jugador"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, nullable=False)
+    usuario = Column(String, nullable=False)
+    pais = Column(String)
+    activo = Column(Boolean, default=True)
+
+    def __repr__(self):
+        return f"<Jugador(id={self.id}, nombre='{self.nombre}', usuario='{self.usuario}')>"
+
+class Equipo(Base):
+    __tablename__ = "Equipo"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, nullable=False)
+    pais = Column(String)
+    fundacion = Column(Date)
+
+    # Relaciones con Partida
+    partidas_local = relationship("Partida", foreign_keys="Partida.equipo_local_id", back_populates="equipo_local")
+    partidas_visitante = relationship("Partida", foreign_keys="Partida.equipo_visitante_id", back_populates="equipo_visitante")
+
+    def __repr__(self):
+        return f"<Equipo(id={self.id}, nombre='{self.nombre}')>"
+
+class Torneo(Base):
+    __tablename__ = "Torneo"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, nullable=False)
+    juego = Column(String, nullable=False)
+    fecha_inicio = Column(Date)
+    premio = Column(Float)
+
+    # Relación con Partida
+    partidas = relationship("Partida", back_populates="torneo")
+
+    def __repr__(self):
+        return f"<Torneo(id={self.id}, nombre='{self.nombre}', juego='{self.juego}')>"
+
+class Partida(Base):
+    __tablename__ = "Partida"
+
+    id = Column(Integer, primary_key=True)
+    fecha = Column(Date)
+    resultado = Column(String)  # ej: '3-1', 'EMPATE'
+    torneo_id = Column(Integer, ForeignKey('Torneo.id'))
+    equipo_local_id = Column(Integer, ForeignKey('Equipo.id'))
+    equipo_visitante_id = Column(Integer, ForeignKey('Equipo.id'))
+
+    # Relaciones pertenecientes a Partida
+    torneo = relationship("Torneo", back_populates="partidas")
+    equipo_local = relationship("Equipo", foreign_keys=[equipo_local_id], back_populates="partidas_local")
+    equipo_visitante = relationship("Equipo", foreign_keys=[equipo_visitante_id], back_populates="partidas_visitante")
+
+    def __repr__(self):
+        return f"<Partida(id={self.id}, fecha={self.fecha}, resultado='{self.resultado}')>"
+
+
+# 2. CONFIGURACIÓN DEL ENGINE Y POBLADO DE LA BASE DE DATOS
+
+engine = create_engine("sqlite:///esports_platform.db", echo=False)
+
+if __name__ == "__main__":
+    # Crear tablas
+    Base.metadata.create_all(engine)
+    print("Database engine creado y tablas generadas correctamente.")
+
+    with Session(engine) as session:
+        # --- 1. Jugadores (mínimo 10) ---
+
+        jugadores_data = [
+            {'nombre': 'Faker', 'usuario': 'faker', 'pais': 'Corea del Sur', 'activo': True},
+            {'nombre': 's1mple', 'usuario': 's1mple', 'pais': 'Ucrania', 'activo': True},
+            {'nombre': 'TenZ', 'usuario': 'TenZ', 'pais': 'Canadá', 'activo': True},
+            {'nombre': 'ZywOo', 'usuario': 'zywoo', 'pais': 'Francia', 'activo': True},
+            {'nombre': 'Caps', 'usuario': 'caps', 'pais': 'Dinamarca', 'activo': True},
+            {'nombre': 'aspas', 'usuario': 'aspas', 'pais': 'Brasil', 'activo': True},
+            {'nombre': 'Chovy', 'usuario': 'chovy', 'pais': 'Corea del Sur', 'activo': True},
+            {'nombre': 'm0NESY', 'usuario': 'm0nesy', 'pais': 'Rusia', 'activo': True},
+            {'nombre': 'Uzi', 'usuario': 'uzi', 'pais': 'China', 'activo': False},
+            {'nombre': 'Shroud', 'usuario': 'shroud', 'pais': 'Canadá', 'activo': False},
+            {'nombre': 'device', 'usuario': 'device', 'pais': 'Dinamarca', 'activo': True}
+        ]
+        jugadores = [Jugador(**data) for data in jugadores_data]
+        session.add_all(jugadores)
+
+        # --- 2. Equipos (mínimo 10) ---
+        equipos_data = [
+            {'nombre': 'Team Liquid', 'pais': 'USA', 'fundacion': date(2000, 1, 1)},
+            {'nombre': 'Fnatic', 'pais': 'Reino Unido', 'fundacion': date(2004, 7, 23)},
+            {'nombre': 'G2 Esports', 'pais': 'España', 'fundacion': date(2013, 2, 10)},
+            {'nombre': 'T1', 'pais': 'Corea del Sur', 'fundacion': date(2012, 12, 1)},
+            {'nombre': 'Astralis', 'pais': 'Dinamarca', 'fundacion': date(2016, 1, 18)},
+            {'nombre': 'Cloud9', 'pais': 'USA', 'fundacion': date(2013, 1, 1)},
+            {'nombre': 'Evil Geniuses', 'pais': 'USA', 'fundacion': date(1999, 1, 1)},
+            {'nombre': 'Natus Vincere', 'pais': 'Ucrania', 'fundacion': date(2009, 12, 17)},
+            {'nombre': 'Gambit Esports', 'pais': 'Rusia', 'fundacion': date(2013, 1, 1)},
+            {'nombre': 'DRX', 'pais': 'Corea del Sur', 'fundacion': date(2017, 1, 1)},
+            {'nombre': 'KOI', 'pais': 'España', 'fundacion': date(2021, 12, 15)}
+        ]
+        equipos = [Equipo(**data) for data in equipos_data]
+        session.add_all(equipos)
+
+        # --- 3. Torneos (mínimo 10) ---
+        torneos_data = [
+            {'nombre': 'The International 2023', 'juego': 'Dota 2', 'fecha_inicio': date(2023, 10, 12), 'premio': 30000000.00},
+            {'nombre': 'League of Legends Worlds 2023', 'juego': 'League of Legends', 'fecha_inicio': date(2023, 10, 10), 'premio': 2225000.00},
+            {'nombre': 'CS:GO Major Stockholm', 'juego': 'CS:GO', 'fecha_inicio': date(2021, 10, 26), 'premio': 2000000.00},
+            {'nombre': 'Valorant Champions 2023', 'juego': 'Valorant', 'fecha_inicio': date(2023, 8, 6), 'premio': 2250000.00},
+            {'nombre': 'Overwatch League Grand Finals', 'juego': 'Overwatch', 'fecha_inicio': date(2022, 11, 4), 'premio': 1500000.00},
+            {'nombre': 'Free Fire World Series', 'juego': 'Free Fire', 'fecha_inicio': date(2022, 5, 14), 'premio': 2000000.00},
+            {'nombre': 'PUBG Global Championship', 'juego': 'PUBG', 'fecha_inicio': date(2022, 11, 1), 'premio': 2000000.00},
+            {'nombre': 'Fortnite World Cup', 'juego': 'Fortnite', 'fecha_inicio': date(2019, 7, 26), 'premio': 30000000.00},
+            {'nombre': 'Apex Legends Global Series', 'juego': 'Apex Legends', 'fecha_inicio': date(2023, 7, 13), 'premio': 2000000.00},
+            {'nombre': 'Rocket League Championship Series', 'juego': 'Rocket League', 'fecha_inicio': date(2023, 12, 8), 'premio': 2100000.00},
+            {'nombre': 'FGC Supercup', 'juego': 'Street Fighter 6', 'fecha_inicio': date(2024, 3, 1), 'premio': 500000.00}
+        ]
+
+        torneos = [Torneo(**data) for data in torneos_data]
+        session.add_all(torneos)
+
+        # Commiteamos para que los IDs de Equipos y Torneos estén disponibles para Partidas
+        session.commit()
+
+        # --- 4. Partidas (mínimo 10) ---
+        partidas_data = [
+            {'fecha': date(2023, 10, 15), 'resultado': '2-1', 'torneo_nombre': 'The International 2023', 'equipo_local_nombre': 'Team Liquid', 'equipo_visitante_nombre': 'Fnatic'},
+            {'fecha': date(2023, 10, 18), 'resultado': '0-2', 'torneo_nombre': 'The International 2023', 'equipo_local_nombre': 'Fnatic', 'equipo_visitante_nombre': 'Team Liquid'},
+            {'fecha': date(2023, 10, 20), 'resultado': '3-2', 'torneo_nombre': 'League of Legends Worlds 2023', 'equipo_local_nombre': 'T1', 'equipo_visitante_nombre': 'DRX'},
+            {'fecha': date(2021, 10, 28), 'resultado': '16-14', 'torneo_nombre': 'CS:GO Major Stockholm', 'equipo_local_nombre': 'Astralis', 'equipo_visitante_nombre': 'Natus Vincere'},
+            {'fecha': date(2021, 10, 29), 'resultado': '12-16', 'torneo_nombre': 'CS:GO Major Stockholm', 'equipo_local_nombre': 'Natus Vincere', 'equipo_visitante_nombre': 'Astralis'},
+            {'fecha': date(2023, 8, 10), 'resultado': '2-0', 'torneo_nombre': 'Valorant Champions 2023', 'equipo_local_nombre': 'Cloud9', 'equipo_visitante_nombre': 'Evil Geniuses'},
+            {'fecha': date(2023, 7, 15), 'resultado': 'GANÓ G2', 'torneo_nombre': 'Apex Legends Global Series', 'equipo_local_nombre': 'G2 Esports', 'equipo_visitante_nombre': 'KOI'},
+            {'fecha': date(2023, 7, 16), 'resultado': 'GANÓ KOI', 'torneo_nombre': 'Apex Legends Global Series', 'equipo_local_nombre': 'KOI', 'equipo_visitante_nombre': 'G2 Esports'},
+            {'fecha': date(2023, 12, 9), 'resultado': '4-2', 'torneo_nombre': 'Rocket League Championship Series', 'equipo_local_nombre': 'Team Liquid', 'equipo_visitante_nombre': 'G2 Esports'},
+            {'fecha': date(2023, 12, 10), 'resultado': '3-4', 'torneo_nombre': 'Rocket League Championship Series', 'equipo_local_nombre': 'G2 Esports', 'equipo_visitante_nombre': 'Team Liquid'},
+            {'fecha': date(2023, 10, 25), 'resultado': '3-1', 'torneo_nombre': 'League of Legends Worlds 2023', 'equipo_local_nombre': 'Fnatic', 'equipo_visitante_nombre': 'T1'}
+        ]
+
+        partidas = []
+        for data in partidas_data:
+            torneo_obj = session.query(Torneo).filter_by(nombre=data['torneo_nombre']).first()
+            equipo_local_obj = session.query(Equipo).filter_by(nombre=data['equipo_local_nombre']).first()
+            equipo_visitante_obj = session.query(Equipo).filter_by(nombre=data['equipo_visitante_nombre']).first()
+
+            if torneo_obj and equipo_local_obj and equipo_visitante_obj:
+                nueva_partida = Partida(
+                    fecha=data['fecha'],
+                    resultado=data['resultado'],
+                    torneo=torneo_obj,
+                    equipo_local=equipo_local_obj,
+                    equipo_visitante=equipo_visitante_obj
+                )
+                session.add(nueva_partida)  # <- se agrega apenas se crea, evita el warning de autoflush
+                partidas.append(nueva_partida)
+            else:
+                print(f"Advertencia: No se pudo encontrar un objeto relacionado para la partida: {data}")
+
+        # Commit global de la transacción
+        session.commit()
+        print("Todos los datos (jugadores, equipos, torneos y partidas) fueron insertados correctamente.")
