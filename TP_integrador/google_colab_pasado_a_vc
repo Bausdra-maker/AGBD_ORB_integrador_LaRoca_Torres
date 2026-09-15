@@ -167,6 +167,72 @@ if __name__ == "__main__":
             else:
                 print(f"Advertencia: No se pudo encontrar un objeto relacionado para la partida: {data}")
 
-        # Commit global de la transacción
         session.commit()
         print("Todos los datos (jugadores, equipos, torneos y partidas) fueron insertados correctamente.")
+
+        # ==========================================
+        # 3. CONSULTAS
+        # ==========================================
+
+        # 1) Filtro: jugadores de Corea del Sur
+        jugadores_corea = session.query(Jugador).filter(
+            Jugador.pais == "Corea del Sur"
+        ).all()
+
+        print("\nJugadores de Corea del Sur:")
+        for jugador in jugadores_corea:
+            print(jugador)
+
+
+        # 2) Filtro: jugadores que no están inactivos
+        jugadores_activos = session.query(Jugador).filter(
+            Jugador.activo != False
+        ).all()
+
+        print("\nJugadores activos:")
+        for jugador in jugadores_activos:
+            print(jugador)
+
+
+        # 3) Filtro: torneos con premio mayor a 2 millones
+        torneos_premio = session.query(Torneo).filter(
+            Torneo.premio > 2000000
+        ).all()
+
+        print("\nTorneos con premio mayor a 2 millones:")
+        for torneo in torneos_premio:
+            print(torneo)
+
+
+        # 4) Consulta usando or_()
+        # Jugadores de Brasil o Canadá
+        jugadores_brasil_canada = session.query(Jugador).filter(
+            or_(
+                Jugador.pais == "Brasil",
+                Jugador.pais == "Canadá"
+            )
+        ).all()
+
+        print("\nJugadores de Brasil o Canadá:")
+        for jugador in jugadores_brasil_canada:
+            print(jugador)
+
+
+        # 5) Consulta usando contains()
+        # Torneos cuyo nombre contiene "World"
+        torneos_world = session.query(Torneo).filter(
+            Torneo.nombre.contains("World")
+        ).all()
+
+        print("\nTorneos que contienen 'World':")
+        for torneo in torneos_world:
+            print(torneo)
+
+
+        # 6) Torneo con mayor premio usando order_by().first()
+        torneo_mayor_premio = session.query(Torneo).order_by(
+            Torneo.premio.desc()
+        ).first()
+
+        print("\nTorneo con mayor premio:")
+        print(torneo_mayor_premio)
