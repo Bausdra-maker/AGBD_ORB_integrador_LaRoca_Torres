@@ -53,7 +53,7 @@ class Partida(Base):
 
     id = Column(Integer, primary_key=True)
     fecha = Column(Date)
-    resultado = Column(String)  # ej: '3-1', 'EMPATE'
+    resultado = Column(String)  
     torneo_id = Column(Integer, ForeignKey('Torneo.id'))
     equipo_local_id = Column(Integer, ForeignKey('Equipo.id'))
     equipo_visitante_id = Column(Integer, ForeignKey('Equipo.id'))
@@ -236,3 +236,110 @@ if __name__ == "__main__":
 
         print("\nTorneo con mayor premio:")
         print(torneo_mayor_premio)
+
+
+        print("\n--- EJ 1: Descalificar jugador Faker ---")
+
+        jugador = session.query(Jugador).filter(
+            Jugador.nombre == "Faker"
+        ).first()
+
+        jugador.activo = False
+
+        session.commit()
+
+        jugador_verificado = session.get(Jugador, jugador.id)   
+        print(jugador_verificado)
+
+        print("\n--- EJ 2: Actualizar torneo FGC Supercup ---")
+
+        torneo = session.query(Torneo).filter(
+            Torneo.nombre == "FGC Supercup"
+        ).first()
+
+        torneo.premio = 750000
+
+        session.commit()
+
+        torneo_verificado = session.get(Torneo, torneo.id)  
+        print(torneo_verificado)
+
+
+        print("\n--- EJ 3: Eliminar equipo KOI ---")
+
+        equipo = session.query(Equipo).filter(
+            Equipo.nombre == "KOI"
+        ).first()
+
+        session.delete(equipo)
+        session.commit()
+
+        total = session.query(Equipo).count()
+
+        print(f"Cantidad de equipos: {total}")
+
+
+        print("\n--- EJ 3: Eliminar equipo Gambit Esports ---")
+
+        equipo = session.query(Equipo).filter(
+            Equipo.nombre == "Gambit Esports"
+        ).first()
+
+        session.delete(equipo)
+        session.commit()
+
+        total = session.query(Equipo).count()
+
+        print(f"Cantidad de equipos: {total}")
+
+             # 6. UPDATE MASIVO
+
+        print("\n--- EJ 4: Desactivar jugadores de Canadá ---")
+
+        session.query(Jugador).filter(
+            Jugador.pais == "Canadá"
+        ).update({
+            Jugador.activo: False
+        })
+
+        session.commit()
+
+        jugadores_canada = session.query(Jugador).filter(
+            Jugador.pais == "Canadá"
+        ).all()
+
+        for jugador in jugadores_canada:
+            print(jugador)
+
+
+
+
+## Preguntas para interpretar el funcionamiento de la base de datos
+
+### ¿Cómo interpretarías en una situación real que un jugador pase de `activo = True` a `activo = False`?
+
+### Si un equipo es eliminado de la base de datos, ¿qué situación real podría representar?
+
+### Si el premio de un torneo cambia de $500.000 a $750.000, ¿qué estaría representando ese cambio en la realidad?
+
+### Si varios jugadores de un mismo país pasan a estar inactivos mediante un UPDATE masivo, ¿qué situación podría representar?
+
+### Cuando buscamos a Faker mediante un `filter()`, ¿qué estamos haciendo desde el punto de vista de la organización de un torneo?
+
+### Si usamos `session.get()` después de modificar un jugador, ¿qué estaríamos comprobando en una situación real?
+
+### ¿Qué representa confirmar los cambios con `commit()` dentro de una situación real?
+
+### Si buscamos torneos cuyo nombre contiene una determinada palabra, ¿qué tipo de búsqueda estaríamos haciendo como usuario de una plataforma de esports?
+
+### Si ordenamos los torneos por premio y obtenemos el primero, ¿qué información estaríamos buscando?
+
+### Si buscamos jugadores de dos países diferentes utilizando `or_()`, ¿qué necesidad real podría tener una plataforma de esports?
+
+### ¿Qué podría representar que un equipo tenga varias partidas relacionadas con él?
+
+### ¿Qué podría pasar en la realidad si intentáramos eliminar un equipo que todavía tiene partidas registradas?
+
+### ¿Cómo se relacionan en una situación real los jugadores, equipos, torneos y partidas?
+
+### ¿Qué diferencia hay entre consultar información y modificar información en una plataforma de torneos?
