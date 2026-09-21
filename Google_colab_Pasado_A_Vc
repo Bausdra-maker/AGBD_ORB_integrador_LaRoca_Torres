@@ -1,5 +1,5 @@
 from datetime import date
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, create_engine
+from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, create_engine, or_
 from sqlalchemy.orm import DeclarativeBase, relationship, Session
 
 
@@ -53,7 +53,7 @@ class Partida(Base):
 
     id = Column(Integer, primary_key=True)
     fecha = Column(Date)
-    resultado = Column(String)  
+    resultado = Column(String)
     torneo_id = Column(Integer, ForeignKey('Torneo.id'))
     equipo_local_id = Column(Integer, ForeignKey('Equipo.id'))
     equipo_visitante_id = Column(Integer, ForeignKey('Equipo.id'))
@@ -67,30 +67,33 @@ class Partida(Base):
         return f"<Partida(id={self.id}, fecha={self.fecha}, resultado='{self.resultado}')>"
 
 
-# 2. CONFIGURACIÓN DEL ENGINE Y POBLADO DE LA BASE DE DATOS
+# 2. CONFIGURACIÓN DEL ENGINE
 
 engine = create_engine("sqlite:///esports_platform.db", echo=False)
-
 if __name__ == "__main__":
-    # Crear tablas
+    # 1. Borrar todas las tablas existentes para eliminar datos viejos acumulados
+    Base.metadata.drop_all(engine)
+
+    # 2. Crear las tablas nuevamente desde cero
     Base.metadata.create_all(engine)
-    print("Database engine creado y tablas generadas correctamente.")
+    print("Base de datos recreada y tablas generadas correctamente.")
 
     with Session(engine) as session:
+
         # --- 1. Jugadores (mínimo 10) ---
 
         jugadores_data = [
-            {'nombre': 'Faker', 'usuario': 'faker', 'pais': 'Corea del Sur', 'activo': True},
-            {'nombre': 's1mple', 'usuario': 's1mple', 'pais': 'Ucrania', 'activo': True},
-            {'nombre': 'TenZ', 'usuario': 'TenZ', 'pais': 'Canadá', 'activo': True},
-            {'nombre': 'ZywOo', 'usuario': 'zywoo', 'pais': 'Francia', 'activo': True},
-            {'nombre': 'Caps', 'usuario': 'caps', 'pais': 'Dinamarca', 'activo': True},
-            {'nombre': 'aspas', 'usuario': 'aspas', 'pais': 'Brasil', 'activo': True},
-            {'nombre': 'Chovy', 'usuario': 'chovy', 'pais': 'Corea del Sur', 'activo': True},
-            {'nombre': 'm0NESY', 'usuario': 'm0nesy', 'pais': 'Rusia', 'activo': True},
-            {'nombre': 'Uzi', 'usuario': 'uzi', 'pais': 'China', 'activo': False},
-            {'nombre': 'Shroud', 'usuario': 'shroud', 'pais': 'Canadá', 'activo': False},
-            {'nombre': 'device', 'usuario': 'device', 'pais': 'Dinamarca', 'activo': True}
+            {'nombre': 'Lee Sang-hyeok', 'usuario': 'Faker', 'pais': 'Corea del Sur', 'activo': True},
+            {'nombre': 'Oleksandr Kostyliev', 'usuario': 's1mple', 'pais': 'Ucrania', 'activo': True},
+            {'nombre': 'Tyson Ngo', 'usuario': 'TenZ', 'pais': 'Canadá', 'activo': True},
+            {'nombre': 'Mathieu Herbaut', 'usuario': 'ZywOo', 'pais': 'Francia', 'activo': True},
+            {'nombre': 'Rasmus Winther', 'usuario': 'Caps', 'pais': 'Dinamarca', 'activo': True},
+            {'nombre': 'Erick Santos', 'usuario': 'aspas', 'pais': 'Brasil', 'activo': True},
+            {'nombre': 'Jeong Ji-hoon', 'usuario': 'Chovy', 'pais': 'Corea del Sur', 'activo': True},
+            {'nombre': 'Ilya Osipov', 'usuario': 'm0NESY', 'pais': 'Rusia', 'activo': True},
+            {'nombre': 'Jian Zi-Hao', 'usuario': 'Uzi', 'pais': 'China', 'activo': False},
+            {'nombre': 'Michael Grzesiek', 'usuario': 'Shroud', 'pais': 'Canadá', 'activo': False},
+            {'nombre': 'Nicolai Reedtz', 'usuario': 'device', 'pais': 'Dinamarca', 'activo': True}
         ]
         jugadores = [Jugador(**data) for data in jugadores_data]
         session.add_all(jugadores)
@@ -170,9 +173,6 @@ if __name__ == "__main__":
         session.commit()
         print("Todos los datos (jugadores, equipos, torneos y partidas) fueron insertados correctamente.")
 
-        # ==========================================
-        # 3. CONSULTAS
-        # ==========================================
 
         # 1) Filtro: jugadores de Corea del Sur
         jugadores_corea = session.query(Jugador).filter(
@@ -240,16 +240,19 @@ if __name__ == "__main__":
 
         print("\n--- EJ 1: Descalificar jugador Faker ---")
 
+        # Ahora busco nickname (usuario) o por su nombre real ("Lee Sang-hyeok")
         jugador = session.query(Jugador).filter(
-            Jugador.nombre == "Faker"
+            Jugador.usuario == "Faker"
         ).first()
 
-        jugador.activo = False
+        if jugador:
+            jugador.activo = False
+            session.commit()
 
-        session.commit()
-
-        jugador_verificado = session.get(Jugador, jugador.id)   
-        print(jugador_verificado)
+            jugador_verificado = session.get(Jugador, jugador.id)
+            print(jugador_verificado)
+        else:
+            print("Jugador no encontrado.")
 
         print("\n--- EJ 2: Actualizar torneo FGC Supercup ---")
 
@@ -261,7 +264,7 @@ if __name__ == "__main__":
 
         session.commit()
 
-        torneo_verificado = session.get(Torneo, torneo.id)  
+        torneo_verificado = session.get(Torneo, torneo.id)
         print(torneo_verificado)
 
 
@@ -311,35 +314,3 @@ if __name__ == "__main__":
         for jugador in jugadores_canada:
             print(jugador)
 
-
-
-
-## Preguntas para interpretar el funcionamiento de la base de datos
-
-### ¿Cómo interpretarías en una situación real que un jugador pase de `activo = True` a `activo = False`?
-
-### Si un equipo es eliminado de la base de datos, ¿qué situación real podría representar?
-
-### Si el premio de un torneo cambia de $500.000 a $750.000, ¿qué estaría representando ese cambio en la realidad?
-
-### Si varios jugadores de un mismo país pasan a estar inactivos mediante un UPDATE masivo, ¿qué situación podría representar?
-
-### Cuando buscamos a Faker mediante un `filter()`, ¿qué estamos haciendo desde el punto de vista de la organización de un torneo?
-
-### Si usamos `session.get()` después de modificar un jugador, ¿qué estaríamos comprobando en una situación real?
-
-### ¿Qué representa confirmar los cambios con `commit()` dentro de una situación real?
-
-### Si buscamos torneos cuyo nombre contiene una determinada palabra, ¿qué tipo de búsqueda estaríamos haciendo como usuario de una plataforma de esports?
-
-### Si ordenamos los torneos por premio y obtenemos el primero, ¿qué información estaríamos buscando?
-
-### Si buscamos jugadores de dos países diferentes utilizando `or_()`, ¿qué necesidad real podría tener una plataforma de esports?
-
-### ¿Qué podría representar que un equipo tenga varias partidas relacionadas con él?
-
-### ¿Qué podría pasar en la realidad si intentáramos eliminar un equipo que todavía tiene partidas registradas?
-
-### ¿Cómo se relacionan en una situación real los jugadores, equipos, torneos y partidas?
-
-### ¿Qué diferencia hay entre consultar información y modificar información en una plataforma de torneos?
