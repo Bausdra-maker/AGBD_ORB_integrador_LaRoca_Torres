@@ -1,0 +1,186 @@
+Información del Proyecto
+Integrantes
+Bautista La Roca
+
+Facundo Torres
+
+
+
+GUIA DE IMPORTS DEL CODIGO
+
+Todos los imports se usan. Estan agrupados por origen, con el lugar
+donde aparece cada uno.
+
+
+=====================================
+from datetime import date
+=====================================
+
+date
+  Que hace: clase de Python para crear fechas. SQLAlchemy la necesita
+  porque las columnas de tipo Date esperan objetos date de Python,
+  no strings.
+  Donde se usa: en la carga de datos, para las fechas de fundacion de
+  los equipos, de inicio de los torneos y de las partidas.
+  Ejemplo:
+      {'nombre': 'Fnatic', 'pais': 'Reino Unido', 'fundacion': date(2004, 7, 23)}
+      {'fecha': date(2023, 10, 15), 'resultado': '2-1', ...}
+
+
+=====================================
+from sqlalchemy import ...
+=====================================
+
+Column
+  Que hace: declara una columna de la tabla.
+  Donde se usa: en todos los modelos (Jugador, Equipo, Torneo y Partida).
+
+Integer
+  Que hace: tipo entero.
+  Donde se usa: en los id (clave primaria) y en las claves foraneas de Partida.
+
+String
+  Que hace: tipo texto.
+  Donde se usa: en nombre, usuario, pais, juego y resultado.
+
+Boolean
+  Que hace: tipo verdadero/falso.
+  Donde se usa: en Jugador.activo.
+
+Date
+  Que hace: tipo fecha en la base de datos.
+  Donde se usa: en Equipo.fundacion, Torneo.fecha_inicio y Partida.fecha.
+
+Float
+  Que hace: tipo decimal.
+  Donde se usa: en Torneo.premio.
+
+ForeignKey
+  Que hace: define una clave foranea hacia otra tabla.
+  Donde se usa: en Partida, en torneo_id, equipo_local_id y
+  equipo_visitante_id.
+
+create_engine
+  Que hace: crea la conexion a la base de datos.
+  Donde se usa: en la seccion "Configuracion del engine".
+
+or_
+  Que hace: combina condiciones con OR en un filtro.
+  Donde se usa: en la consulta 4 (jugadores de Brasil o Canada).
+
+Ejemplos concretos:
+
+  # Column + tipos + ForeignKey
+  torneo_id = Column(Integer, ForeignKey('Torneo.id'))
+
+  # create_engine
+  engine = create_engine("sqlite:///esports_platform.db", echo=False)
+
+  # or_
+  session.query(Jugador).filter(
+      or_(Jugador.pais == "Brasil", Jugador.pais == "Canada")
+  )
+
+CONFUSION:
+  Date (de SQLAlchemy) define el tipo de la columna.
+  date (de datetime) crea los valores.
+  Se usan juntos, pero cumplen roles distintos.
+
+
+=====================================
+from sqlalchemy.orm import DeclarativeBase, relationship, Session
+=====================================
+
+DeclarativeBase
+  Que hace: es la clase base de la que heredan los modelos.
+  Donde se usa: en class Base(DeclarativeBase). De ahi salen
+  Base.metadata.create_all() y Base.metadata.drop_all().
+
+relationship
+  Que hace: conecta modelos entre si, sin escribir JOINs a mano.
+  Donde se usa: en Equipo (partidas_local, partidas_visitante),
+  en Torneo (partidas) y en Partida (torneo, equipo_local,
+  equipo_visitante).
+
+Session
+  Que hace: maneja las operaciones sobre la base (agregar, consultar,
+  modificar, borrar y commitear).
+  Donde se usa: en "with Session(engine) as session:", que envuelve
+  todo el bloque __main__.
+
+Ejemplos:
+
+  # relationship (con back_populates la relacion es bidireccional)
+  torneo = relationship("Torneo", back_populates="partidas")
+
+  # Session
+  with Session(engine) as session:
+      session.add_all(jugadores)
+      session.commit()
+
+
+=====================================
+COMO SE CONECTA TODO (FLUJO DEL SCRIPT)
+=====================================
+
+1. Modelos: DeclarativeBase, Column, los tipos, ForeignKey y
+   relationship definen las 4 tablas.
+
+2. Engine: create_engine crea la conexion al archivo SQLite.
+
+3. Reset: drop_all y create_all (vienen de Base.metadata) borran y
+   recrean las tablas.
+
+4. Carga: Session y date insertan jugadores, equipos, torneos y
+   partidas.
+
+5. Consultas: session.query(...).filter(...), con or_ en la
+   consulta 4.
+
+6. Modificaciones: los ejercicios EJ 1 a EJ 4 hacen update, delete y
+   update masivo.
+
+
+
+DUDAS:
+1. ¿Cómo se relacionan en una situación real los jugadores, equipos, torneos y partidas?
+Los Jugadores forman parte de la nómina o plantilla.
+
+Los Equipos se inscriben y participan en los Torneos.
+
+Cada Torneo agrupa un conjunto de Partidas organizadas en un calendario.
+
+En cada Partida se enfrentan dos Equipos (Local y Visitante) para determinar un resultado.
+
+2. ¿Qué podría pasar en la realidad si intentáramos eliminar un equipo que todavía tiene partidas registradas?
+En la base de datos se generará un error de integridad referencial (Foreign Key constraint failure) debido a que existen partidas asociadas a su ID. En la realidad, no se puede borrar una organización activa sin definir qué ocurre con su historial de enfrentamientos (requeriría borrado en cascada o anular las FKs).
+
+
+3. ¿Qué podría representar que un equipo tenga varias partidas relacionadas con él?
+Representa el historial de enfrentamientos y la trayectoria competitiva del equipo a lo largo de una o varias temporadas del torneo.
+
+
+4. Si buscamos jugadores de dos países diferentes utilizando or_(), ¿qué necesidad real podría tener una plataforma de esports?
+Representa la segmentación geográfica para organizar competencias regionales combinadas (por ejemplo, un torneo clasificatorio para el servidor de América del Sur o Norteamérica).
+
+5. Si ordenamos los torneos por premio y obtenemos el primero, ¿qué información estaríamos buscando?
+Representa la identificación de la competencia estrella del año (Tier 1 o torneo insignia), útil para destacar el evento principal en la portada de la plataforma o para análisis de marketing y patrocinio.
+
+6. Si buscamos torneos cuyo nombre contiene una determinada palabra, ¿qué tipo de búsqueda estaríamos haciendo como usuario de una plataforma de esports?
+Representa un filtro por palabra clave dentro del catálogo de eventos (por ejemplo, buscar todos los torneos que pertenezcan a la serie "World" o a un circuito específico) para ubicar rápidamente competencias de interés.
+
+7. ¿Qué representa confirmar los cambios con commit() dentro de una situación real?
+Representa la firma e impacto definitivo de la transacción. Hasta no hacer commit(), los cambios son borradores temporales; al ejecutarlo, las modificaciones quedan publicadas oficialmente para toda la organización y los usuarios del sistema.
+
+8 Cuando buscamos a Faker mediante un filter(), ¿qué estamos haciendo desde el punto de vista de la organización de un torneo?
+Representa la búsqueda en el padrón de competidores de la ficha técnica de un participante específico mediante su apodo (nickname), necesaria para verificar sus datos, revisar su historial o aplicarle un cambio de estado.
+
+9 Si varios jugadores de un mismo país pasan a estar inactivos mediante un UPDATE masivo, ¿qué situación podría representar?
+Representa una restricción regional o bloqueo geopolítico/regulatorio que imposibilita la participación de todos los jugadores de esa nacionalidad en las competencias de la plataforma.
+
+10.Si el premio de un torneo cambia de $500.000 a $750.000, ¿qué estaría representando ese cambio en la realidad?
+Representa una actualización del prize pool (bolsa de premios) del torneo, ya sea por conseguir nuevos patrocinadores, una inyección de fondos de la desarrolladora o recaudación mediante ventas comunitarias (crowdfunding o pases de batalla).
+
+11. ¿Cómo interpretarías en una situación real que un jugador pase de activo = True a activo = False?
+Representa la suspensión, retiro o descalificación temporal/definitiva de un jugador del circuito profesional (por ejemplo, tras ser sancionado por infracción de reglas o al anunciar su retiro de la escena competitiva).
+
